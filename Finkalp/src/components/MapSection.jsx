@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { GoogleMap, LoadScript, Autocomplete, MarkerF , KmlLayer } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Autocomplete, MarkerF, KmlLayer, Circle } from "@react-google-maps/api";
+import { Sun, Moon } from "lucide-react";
 
 const libraries = ["places"];
 
@@ -7,43 +8,48 @@ const MapSection = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 12.9501, lng: 77.7152 });
   const [markerPosition, setMarkerPosition] = useState({ lat: 12.9501, lng: 77.7152 });
   const [autocomplete, setAutocomplete] = useState(null);
+  const [mapType, setMapType] = useState("roadmap");
+  const [showKMZ, setShowKMZ] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [theme, setTheme] = useState("light");
   const mapRef = useRef(null);
 
-  // Function to get live location
+  const kmzFileUrl = "https://www.google.com/maps/d/kml?mid=1uDdngMzmTs5UMJuLyyVe4TKmCxtI1TE&usp";
+
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
+      setIsLoading(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const userLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
-          // console.log(userLocation.lat );
-          // console.log(userLocation.lng );
-          
-          setMapCenter(userLocation); // ✅ Update map center
-          setMarkerPosition(userLocation); // ✅ Move marker to user location
+          setMapCenter(userLocation);
+          setMarkerPosition(userLocation);
 
           if (mapRef.current) {
-            mapRef.current.setCenter(userLocation); // ✅ Force map to update center
-            mapRef.current.panTo(userLocation); // ✅ Smooth transition
+            mapRef.current.setCenter(userLocation);
+            mapRef.current.panTo(userLocation);
           }
+          setIsLoading(false);
         },
         (error) => {
           console.error("Geolocation error:", error);
+          setIsLoading(false);
+          alert("Failed to fetch your location. Please try again.");
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
-      console.error("Geolocation is not supported by this browser.");
+      alert("Geolocation is not supported by this browser.");
     }
   };
 
   useEffect(() => {
-    getCurrentLocation(); // Get user location on load
+    getCurrentLocation();
   }, []);
 
-  // Handle place selection
   const onPlaceSelected = () => {
     if (autocomplete) {
       const place = autocomplete.getPlace();
@@ -54,46 +60,90 @@ const MapSection = () => {
         };
         setMarkerPosition(newLocation);
         setMapCenter(newLocation);
-        // console.log(newLocation);
-        
+
         if (mapRef.current) {
-          mapRef.current.setCenter(newLocation); // ✅ Ensure map moves
+          mapRef.current.setCenter(newLocation);
           mapRef.current.panTo(newLocation);
         }
       }
     }
   };
 
+  const toggleMapType = () => {
+    setMapType((prevType) => (prevType === "roadmap" ? "satellite" : "roadmap"));
+  };
+
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  };
+
   return (
-    <div className="h-screen flex flex-col justify-center items-center relative">
+    <div className={`h-screen flex flex-col items-center justify-center ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}>
       <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} libraries={libraries}>
-        {/* Search Box */}
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col items-center">
           <Autocomplete onLoad={setAutocomplete} onPlaceChanged={onPlaceSelected}>
-            <input type="text" placeholder="Search a location..." className="p-2 border rounded w-96" />
+            <input
+              type="text"
+              placeholder="Search for a city, landmark, or address..."
+              className="p-2 border rounded w-96 shadow-md"
+            />
           </Autocomplete>
+          <button
+            onClick={toggleTheme}
+            className="p-2 mt-2 rounded shadow-lg bg-gray-700 text-white"
+            aria-label="Toggle Theme"
+          >
+            {theme === "light" ? <Moon /> : <Sun />} {theme === "light" ? "Dark Mode" : "Light Mode"}
+          </button>
         </div>
 
-        {/* Google Map */}
-        <div className="relative">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-96 w-full">
+            <p className="text-lg font-semibold text-gray-700">Loading map...</p>
+          </div>
+        ) : (
           <GoogleMap
-            mapContainerStyle={{ width: "60vw", height: "60vh" }}
-            center={mapCenter} // ✅ Updated properly
-            zoom={14} // ✅ Higher zoom for better accuracy
+            mapContainerStyle={{ width: "80vw", height: "70vh" }}
+            center={mapCenter}
+            zoom={14}
+            mapTypeId={mapType}
             onLoad={(map) => (mapRef.current = map)}
           >
-            <MarkerF position={markerPosition} />
-          </GoogleMap>
+            {/* Marker and Circle around Current Location */}
+            <MarkerF position={markerPosition} icon={{ url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" }} />
+            <Circle center={markerPosition} radius={500} options={{ strokeColor: "#4A90E2", fillColor: "#CDEBFF" }} />
 
-          {/* My Location Button */}
-          <div className="absolute top-10 right-5">
-            <button
-              onClick={getCurrentLocation}
-              className="p-2 bg-blue-500 text-white rounded shadow-lg"
-            >
-              📍 My Location
-            </button>
-          </div>
+            {showKMZ && (
+              <KmlLayer
+                url={kmzFileUrl}
+                onStatusChanged={() => console.log("KMZ Layer Loaded")}
+              />
+            )}
+          </GoogleMap>
+        )}
+
+        <div className="w-[80%] h-20 mt-4 flex flex-row items-center justify-around">
+          <button
+            onClick={getCurrentLocation}
+            className="p-2 bg-blue-500 text-white rounded shadow-lg"
+            aria-label="Find My Location"
+          >
+            📍 My Location
+          </button>
+          <button
+            onClick={toggleMapType}
+            className="p-2 bg-gray-700 text-white rounded shadow-lg"
+            aria-label="Toggle Map Type"
+          >
+            🛰 {mapType === "roadmap" ? "Satellite View" : "Default View"}
+          </button>
+          <button
+            onClick={() => setShowKMZ(!showKMZ)}
+            className="p-2 bg-green-500 text-white rounded shadow-lg"
+            aria-label="Toggle KMZ Layer"
+          >
+            🌍 {showKMZ ? "Hide KMZ" : "Show KMZ"}
+          </button>
         </div>
       </LoadScript>
     </div>
