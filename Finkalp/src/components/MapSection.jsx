@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { GoogleMap, LoadScript, Autocomplete, MarkerF, KmlLayer, Circle } from "@react-google-maps/api";
 
-const libraries = ["places"];
+const libraries = ["places"]; 
 
 const MapSection = () => {
   const [mapCenter, setMapCenter] = useState({ lat: 12.9501, lng: 77.7152 });
