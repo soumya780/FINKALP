@@ -1,29 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   GoogleMap,
-  LoadScript,
+  useJsApiLoader,
   Autocomplete,
   MarkerF,
   KmlLayer,
   Circle,
-  InfoWindow,
 } from "@react-google-maps/api";
 
 const libraries = ["places"];
 
 const MapSection = () => {
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: libraries,
+  });
+
   const [mapCenter, setMapCenter] = useState({ lat: 12.9501, lng: 77.7152 });
   const [markerPosition, setMarkerPosition] = useState({ lat: 12.9501, lng: 77.7152 });
   const [autocomplete, setAutocomplete] = useState(null);
-  const [mapType, setMapType] = useState("roadmap");
-  const [showKMZ, setShowKMZ] = useState(false);
-  const [showGeoJSON, setShowGeoJSON] = useState(false);
-  const [infoWindow, setInfoWindow] = useState({ position: null, content: "" });
-  const [layerData, setLayerData] = useState([]);
-  
   const mapRef = useRef(null);
+
   const kmlFileUrl = "https://soumya780.github.io/kmz_file/District-Layer.kmz";
-  const geoJsonUrl = "https://soumya780.github.io/kmz_file/District-Layer.geojson";
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -52,7 +50,7 @@ const MapSection = () => {
   const onPlaceSelected = () => {
     if (autocomplete) {
       const place = autocomplete.getPlace();
-      if (place.geometry) {
+      if (place?.geometry) {
         const newLocation = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
@@ -64,117 +62,59 @@ const MapSection = () => {
     }
   };
 
-  const toggleMapType = () => {
-    setMapType(mapType === "roadmap" ? "satellite" : "roadmap");
-  };
-
-  const handleToggleKMZ = () => {
-    setShowKMZ(!showKMZ);
-  };
-
-  const toggleGeoJSONLayer = () => {
-    setShowGeoJSON(!showGeoJSON);
-    if (mapRef.current) {
-      if (!showGeoJSON) {
-        mapRef.current.data.loadGeoJson(geoJsonUrl, {}, (features) => {
-          const featureNames = features.map((f) => f.getProperty("name"));
-          setLayerData(featureNames);
-        });
-      } else {
-        mapRef.current.data.forEach((feature) => {
-          mapRef.current.data.remove(feature);
-        });
-        setLayerData([]);
-      }
-    }
-  };
-
-  const onMapLoad = (map) => {
-    mapRef.current = map;
-    map.data.setStyle({
-      fillColor: "blue",
-      strokeColor: "black",
-      strokeWeight: 2,
-    });
-
-    map.data.addListener("click", (event) => {
-      setInfoWindow({
-        position: {
-          lat: event.latLng.lat(),
-          lng: event.latLng.lng(),
-        },
-        content: event.feature.getProperty("name") || "No Information Available",
-      });
-    });
-  };
+  if (!isLoaded) return <div>Loading Map...</div>;
 
   return (
     <div className="flex h-screen">
-      {/* Left: Map Section */}
-      <div className="w-3/4 h-full relative">
-        <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} libraries={libraries}>
-          <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "100%" }}
-            center={mapCenter}
-            zoom={12}
-            mapTypeId={mapType}
-            onLoad={onMapLoad}
-          >
-            <MarkerF position={markerPosition} />
-            <Circle center={markerPosition} radius={500} options={{ fillColor: "#CDEBFF" }} />
-
-            {showKMZ && <KmlLayer url={kmlFileUrl} />}
-
-            {infoWindow.position && (
-              <InfoWindow
-                position={infoWindow.position}
-                onCloseClick={() => setInfoWindow({ position: null, content: "" })}
-              >
-                <div>
-                  <p>{infoWindow.content}</p>
-                </div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
-        </LoadScript>
-
-        {/* Buttons Overlay on Map */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2 bg-white p-2 rounded shadow-lg">
-          <button onClick={getCurrentLocation} className="bg-blue-500 text-white p-2 rounded">
-            📍 My Location
-          </button>
-          <button onClick={toggleMapType} className="bg-gray-700 text-white p-2 rounded">
-            🛰 {mapType === "roadmap" ? "Satellite View" : "Default View"}
-          </button>
-          <button onClick={handleToggleKMZ} className={`p-2 ${showKMZ ? "bg-red-500" : "bg-green-500"} text-white rounded`}>
-            🌍 {showKMZ ? "Hide KMZ" : "Show KMZ"}
-          </button>
-          <button onClick={toggleGeoJSONLayer} className={`p-2 ${showGeoJSON ? "bg-red-500" : "bg-green-500"} text-white rounded`}>
-            🗺 {showGeoJSON ? "Hide GeoJSON" : "Show GeoJSON"}
-          </button>
+      {/* Sidebar */}
+      <div className="w-1/4 bg-gray-900 text-white p-4 flex flex-col">
+        <div className="flex flex-col gap-2 mb-4">
+          <h2 className="text-lg font-bold">Tin Factory</h2>
+          <p>3rd A Main Road, Doorvani Nagar, Bangalore - 560015</p>
+        </div>
+        <div>
+          <h3 className="text-md font-semibold">Village Map Details</h3>
+          <p>Survey Number: 49</p>
+          <p>Village Name: Benniganahalli</p>
+          <p>Hobli Name: Mahadevapura</p>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-md font-semibold">Ownership Details</h3>
+          <p>Owner Name: SK Bhat</p>
+          <p>Extent: 1-27-2</p>
+        </div>
+        <div className="mt-auto flex flex-col gap-2">
+          <button className="bg-blue-600 p-2 rounded">ASK AI</button>
+          <button className="bg-gray-700 p-2 rounded">BOOKMARK</button>
         </div>
       </div>
 
-      {/* Right: Layer Information */}
-      <div className="w-1/4 h-full bg-gray-100 p-4 overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">🗺 Map Layers</h2>
-        <p className="mb-2"><strong>📍 Selected District:</strong></p>
-        <p className="text-blue-700 font-semibold">{infoWindow.content || "Click on a region"}</p>
+      {/* Map Section */}
+      <div className="w-3/4 h-full relative">
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          center={mapCenter}
+          zoom={12}
+          onLoad={(map) => (mapRef.current = map)}
+        >
+          <MarkerF position={markerPosition} />
+          <Circle center={markerPosition} radius={500} options={{ fillColor: "#CDEBFF" }} />
+          <KmlLayer url={kmlFileUrl} />
+        </GoogleMap>
 
-        {showGeoJSON && (
-          <>
-            <h3 className="mt-4 text-lg font-semibold">🗂 GeoJSON Layers</h3>
-            {layerData.length > 0 ? (
-              <ul className="list-disc pl-5">
-                {layerData.map((name, index) => (
-                  <li key={index} className="text-gray-700">{name}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500">No layer data loaded.</p>
-            )}
-          </>
-        )}
+        {/* Search Bar */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 w-1/2">
+          <Autocomplete onLoad={setAutocomplete} onPlaceChanged={onPlaceSelected}>
+            <input type="text" placeholder="Search" className="w-full p-2 rounded shadow" />
+          </Autocomplete>
+        </div>
+
+        {/* Floating Buttons */}
+        <div className="absolute bottom-4 left-4 flex space-x-2 bg-white p-2 rounded shadow">
+          <button className="bg-gray-700 text-white p-2 rounded">Survey Details</button>
+          <button className="bg-gray-700 text-white p-2 rounded">Village Map</button>
+          <button className="bg-gray-700 text-white p-2 rounded">CDP</button>
+        </div>
       </div>
     </div>
   );
