@@ -16,6 +16,7 @@ import { IoSettingsSharp } from "react-icons/io5";
 import { FaBookmark } from "react-icons/fa";
 import { BsStars } from "react-icons/bs";
 import Layer from "../assets/layers.gif"
+import axios from "axios"
 
 const libraries = ["places"];
 
@@ -25,15 +26,24 @@ const MapSection = () => {
     libraries: libraries,
   });
 
+
+
   const [mapCenter, setMapCenter] = useState({ lat: 12.9501, lng: 77.7152 });
   const [markerPosition, setMarkerPosition] = useState({ lat: 12.9501, lng: 77.7152 });
   const [autocomplete, setAutocomplete] = useState(null);
   const [showGeoJson, setShowGeoJson] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedLayer, setSelectedLayer] = useState(null);
+  const [sideBardata,setSidebarData] = useState([]);
   const mapRef = useRef(null);
+  const backendUrl = "http://localhost:8080"
 
-  const geoJsonUrl = "https://soumya780.github.io/kmz_file/map.geojson";
+  
+  const geoJsonUrls = [
+    "https://soumya780.github.io/kmz_file/map.geojson",
+    "https://soumya780.github.io/kmz_file/AswathNagar.geojson",
+    "https://soumya780.github.io/kmz_file/19085.geojson"
+  ];
 
   const layers = [
     { name: "Survey Details", details: "Details about survey plots and land records." },
@@ -66,9 +76,22 @@ const MapSection = () => {
     }
   };
 
+ const getSidebarData = async ()=>{
+  const response = await axios.get(`${backendUrl}/location-info`)
+    if(response.status === 200){
+      console.log(response);
+      
+      setSidebarData(response.data);
+    }
+ }
+
   useEffect(() => {
     getCurrentLocation();
   }, []);
+
+  useEffect(()=>{
+    getSidebarData()
+  },[])
 
   const onPlaceSelected = () => {
     if (autocomplete) {
@@ -92,30 +115,38 @@ const MapSection = () => {
     }
   };
 
-  const toggleGeoJsonLayer = () => {
-    if (mapRef.current) {
-      const map = mapRef.current;
-      setMapZoom(12);
-      if (showGeoJson) {
-        map.data.forEach((feature) => {
-          map.data.remove(feature);
+  const [geoJsonLayers, setGeoJsonLayers] = useState([]);
 
-        });
-        setShowGeoJson(false);
-      } else {
-        fetch(geoJsonUrl)
+  const toggleGeoJsonLayer = () => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+  
+    if (showGeoJson) {
+      // Remove all features from the map
+      map.data.forEach((feature) => {
+        map.data.remove(feature);
+      });
+      setShowGeoJson(false);
+    } else {
+      const bounds = new window.google.maps.LatLngBounds();
+  
+      geoJsonUrls.forEach((url, index) => {
+        fetch(url)
           .then((response) => response.json())
           .then((data) => {
+            // **Filter out Point features ONLY for the second GeoJSON file**
+            if (index === 1 ) { // Assuming second URL
+              data.features = data.features.filter((feature) => feature.geometry.type !== "Point");
+            }
+  
             map.data.addGeoJson(data);
+  
             map.data.setStyle({
               fillColor: "#1ba3ce",
               strokeColor: "#000000",
               strokeWeight: 1,
-
             });
-            console.log(data.features[0].properties.name);
-
-            const bounds = new window.google.maps.LatLngBounds();
+  
             data.features.forEach((feature) => {
               const geometry = feature.geometry;
               if (geometry.type === "Point") {
@@ -128,14 +159,17 @@ const MapSection = () => {
                 });
               }
             });
-
-            map.fitBounds(bounds); // Adjust zoom and center to fit GeoJSON
-            setShowGeoJson(true);
+  
+            map.fitBounds(bounds);
           })
           .catch((error) => console.error("Error loading GeoJSON:", error));
-      }
+      });
+  
+      setShowGeoJson(true);
     }
   };
+  
+  
 
   if (!isLoaded) return <div>Loading Map...</div>;
 
@@ -173,19 +207,19 @@ const MapSection = () => {
       {/* Sidebar */}
       <div className="w-[24%]  bg-sky-950 text-slate-200 p-8 gap-5 flex flex-col">
         <div className="flex flex-col gap-2 mb-4">
-          <h2 className="text-lg font-bold">Tin Factory</h2>
-          <p>3rd A Main Road, Doorvani Nagar, Bangalore - 560015</p>
+          <h2 className="text-lg font-bold">{sideBardata[1].address}</h2>
+          {/* <p>3rd A Main Road, Doorvani Nagar, Bangalore - 560015</p> */}
         </div>
         <hr className="opacity-[0.7]" />
         <div>
           <h3 className="text-md font-semibold">Village Map Details</h3>
-          <p>Survey Number: 49</p>
-          <p>Village Name: Benniganahalli</p>
-          <p>Hobli Name: Mahadevapura</p>
+          <p>Survey Number: {sideBardata[1].surveyNumber}</p>
+          <p>Village Name: {sideBardata[1].villageName}</p>
+          <p>Hobli Name: {sideBardata[1].hobliName}</p>
         </div>
         <div className="mt-4">
           <h3 className="text-md font-semibold">Ownership Details</h3>
-          <p>Owner Name: SK Bhat</p>
+          <p>Owner Name: {sideBardata[1].ownerName}</p>
           <p>Extent: 1-27-2</p>
         </div>
         <div className="mt-auto flex flex-col gap-2">
@@ -236,18 +270,20 @@ const MapSection = () => {
             <div className="flex p-2 top-3 bg-gray-700 space-x-3 w-[150%] transition translate-x-[300] duratio  n-100 ">
               {layers.map((layer) => (
                 <button key={layer.name}
-                className={`p-2 text-center rounded transition-colors duration-200 ${
-                  selectedLayer === layer.name ? "bg-blue-500 text-white" : "bg-gray-100"
-                }`}  onClick={() => {
-                    setSelectedLayer(layer.name);
-                    if (layer.name === "Survey Details") { toggleGeoJsonLayer(); }
-                  }}>{layer.name}</button>
+                  className={`p-2 text-center rounded transition-colors duration-200 ${selectedLayer === layer.name ? "bg-blue-500 text-white" : "bg-gray-100"
+                    }`} onClick={() => {
+                      setSelectedLayer(layer.name);
+                      if (layer.name === "Survey Details") { toggleGeoJsonLayer(); }
+                    }}>{layer.name}</button>
               ))}
             </div>
             {/* {selectedLayer && <div className="mt-3 p-2 bg-gray-100 rounded"><p className="text-sm text-gray-700">{layers.find(l => l.name === selectedLayer)?.details}</p></div>} */}
           </div>
-          {/* )} */}
+         
         </div>
+
+
+
       </div>
     </div>
   );
