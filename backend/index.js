@@ -51,7 +51,7 @@ app.get("/geojson-data", async (req, res) => {
 
     const geoJsonData = await Promise.all(
       geoJsonUrls.map(async (url) => {
-        const response = await axios.get(url);
+        const response = await axios.get(url);  
         return response.data;
       })
     );
