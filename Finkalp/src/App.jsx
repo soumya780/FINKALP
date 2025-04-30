@@ -1,15 +1,13 @@
 import "./App.css";
+import { ThemeProvider } from './context/ThemeContext';
 
 import MapSection from "./components/MapSection";
 
 function App() {
   return (
-    <>
-    <div >
-    
-    < MapSection />
-    </div>
-    </>
+    <ThemeProvider>
+      <MapSection />
+    </ThemeProvider>
   );
 }
 

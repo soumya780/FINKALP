@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
+import {  
   GoogleMap,
   useJsApiLoader,
   Autocomplete,
@@ -15,19 +15,22 @@ import { GoHorizontalRule } from "react-icons/go";
 import { IoSettingsSharp } from "react-icons/io5";
 import { FaBookmark } from "react-icons/fa";
 import { BsStars } from "react-icons/bs";
+import { MdOutlineMenuOpen, MdOutlineMenu } from "react-icons/md";
+import { IoSunny, IoMoon } from "react-icons/io5";
+import { useTheme } from "../context/ThemeContext";
 import Layer from "../assets/layers.gif"
 import axios from "axios"
 
 const libraries = ["places"];
 
 const MapSection = () => {
+  const { theme, toggleTheme } = useTheme();
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: libraries,
   });
 
-
-
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [mapCenter, setMapCenter] = useState({ lat: 12.9501, lng: 77.7152 });
   const [markerPosition, setMarkerPosition] = useState({ lat: 12.9501, lng: 77.7152 });
   const [autocomplete, setAutocomplete] = useState(null);
@@ -40,9 +43,10 @@ const MapSection = () => {
 
   
   const geoJsonUrls = [
-    "https://soumya780.github.io/kmz_file/map.geojson",
-    "https://soumya780.github.io/kmz_file/AswathNagar.geojson",
-    "https://soumya780.github.io/kmz_file/19085.geojson"
+    // "https://geojson-host.web.app/GEOJSON.json"    
+    // "https://soumya780.github.io/kmz_file/map.geojson",
+    // "https://soumya780.github.io/kmz_file/AswathNagar.geojson",
+    // "https://soumya780.github.io/kmz_file/19085.geojson"
   ];
 
   const layers = [
@@ -174,8 +178,8 @@ const MapSection = () => {
   if (!isLoaded) return <div>Loading Map...</div>;
 
   return (
-    <div className="flex h-screen">
-      <div className="w-[4.5%] bg-black text-white p-4 flex flex-col items-center justify-between">
+    <div className="flex h-screen bg-white dark:bg-gray-900">
+      <div className="w-[4.5%] bg-black dark:bg-gray-800 text-white p-4 flex flex-col items-center justify-between">
         <a href="">
           <FiAlignJustify className="text-3xl" />
         </a>
@@ -205,36 +209,71 @@ const MapSection = () => {
         </div>
       </div>
       {/* Sidebar */}
-      <div className="w-[24%]  bg-sky-950 text-slate-200 p-8 gap-5 flex flex-col">
-        <div className="flex flex-col gap-2 mb-4">
-          <h2 className="text-lg font-bold">{sideBardata[1].address}</h2>
-          {/* <p>3rd A Main Road, Doorvani Nagar, Bangalore - 560015</p> */}
-        </div>
-        <hr className="opacity-[0.7]" />
-        <div>
-          <h3 className="text-md font-semibold">Village Map Details</h3>
-          <p>Survey Number: {sideBardata[1].surveyNumber}</p>
-          <p>Village Name: {sideBardata[1].villageName}</p>
-          <p>Hobli Name: {sideBardata[1].hobliName}</p>
-        </div>
-        <div className="mt-4">
-          <h3 className="text-md font-semibold">Ownership Details</h3>
-          <p>Owner Name: {sideBardata[1].ownerName}</p>
-          <p>Extent: 1-27-2</p>
-        </div>
-        <div className="mt-auto flex flex-col gap-2">
-          <button className=" text-lg p-2 rounded inline-flex items-center gap-4 justify-center border border-spacing-1 bg-sky-900">
-            ASK AI <BsStars className="text-xl text-sky-500" />
-          </button>
-          <button className="text-lg p-2 rounded inline-flex items-center gap-2 justify-center border border-spacing-1 bg-sky-900">
-            BOOKMARK <FaBookmark className="text-xl text-sky-500" />
-          </button>
+      <div className={`${isSidebarOpen ? 'w-[24%]' : 'w-0'} transition-all duration-300 bg-sky-950 dark:bg-gray-800 text-slate-200 overflow-hidden`}>
+        <div className="p-8 gap-5 flex flex-col h-full">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">{sideBardata[1]?.address}</h2>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="text-white hover:text-gray-300"
+            >
+              ←
+            </button>
+          </div>
+          <hr className="opacity-[0.7]" />
+          <div>
+            <h3 className="text-md font-semibold">Village Map Details</h3>
+            <p>Survey Number: {sideBardata[1]?.surveyNumber}</p>
+            <p>Village Name: {sideBardata[1]?.villageName}</p>
+            <p>Hobli Name: {sideBardata[1]?.hobliName}</p>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-md font-semibold">Ownership Details</h3>
+            <p>Owner Name: {sideBardata[1]?.ownerName}</p>
+            <p>Extent: 1-27-2</p>
+          </div>
+          <div className="mt-auto flex flex-col gap-2">
+            <button className="text-lg p-2 rounded inline-flex items-center gap-4 justify-center border border-spacing-1 bg-sky-900">
+              ASK AI <BsStars className="text-xl text-sky-500" />
+            </button>
+            <button className="text-lg p-2 rounded inline-flex items-center gap-2 justify-center border border-spacing-1 bg-sky-900">
+              BOOKMARK <FaBookmark className="text-xl text-sky-500" />
+            </button>
+          </div>
         </div>
       </div>
 
-
       {/* Map Section */}
-      <div className="w-3/4 h-full relative">
+      <div className={`${isSidebarOpen ? 'w-3/4' : 'w-[95.5%]'} h-full relative transition-all duration-300`}>
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <button 
+            onClick={toggleTheme}
+            className="p-3 rounded-lg shadow-lg transition-all duration-300 flex items-center gap-2 group
+              bg-white dark:bg-gray-700 text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+          >
+            {theme === 'light' ? (
+              <IoMoon className="text-xl" />
+            ) : (
+              <IoSunny className="text-xl" />
+            )}
+          </button>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`p-3 rounded-lg shadow-lg transition-all duration-300 flex items-center gap-2 group
+              ${isSidebarOpen 
+                ? 'bg-red-500 text-white hover:bg-red-600' 
+                : 'bg-sky-600 text-white hover:bg-sky-700'}`}
+          >
+            {isSidebarOpen ? (
+              <MdOutlineMenu className="text-2xl group-hover:rotate-180 transition-transform duration-300" />
+            ) : (
+              <MdOutlineMenuOpen className="text-2xl group-hover:rotate-180 transition-transform duration-300" />
+            )}
+            <span className="text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              {isSidebarOpen ? 'Close' : 'Menu'}
+            </span>
+          </button>
+        </div>
         <GoogleMap
           mapContainerStyle={{ width: "100%", height: "100%" }}
           center={mapCenter}
@@ -281,8 +320,6 @@ const MapSection = () => {
           </div>
          
         </div>
-
-
 
       </div>
     </div>
